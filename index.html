@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Cluedoe - Mystery Detective Game</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="screen active">
+            <h1>🕵️ P2P Cluedoe 🔍</h1>
+            <p class="subtitle">Local WiFi Game Night - Internet Required for PeerJS</p>
+            <div class="button-group">
+                <button id="host-btn" class="btn btn-primary">Host Game</button>
+                <button id="join-btn" class="btn btn-secondary">Join Game</button>
+            </div>
+            
+            <!-- Known Quirks Dropdown -->
+            <div class="info-box" style="margin-top: 30px; border-color: #ff6b6b; background: rgba(139, 0, 0, 0.2);">
+                <details class="info-dropdown">
+                    <summary style="cursor: pointer; font-size: 1.1em; font-weight: bold; color: #ff6b6b; padding: 10px; user-select: none;">
+                        ⚠️ Known Quirks
+                    </summary>
+                    <div style="padding: 15px; padding-top: 10px; line-height: 1.6;">
+                        <ul style="margin-left: 20px;">
+                            <li><strong>Don't Background the Tab/App:</strong> If you background the tab on desktop or switch apps on mobile/tablets, there's a chance you will lose connection. Keep the game visible while playing.</li>
+                            <li><strong>Disable Screen Auto-Lock:</strong> On mobile/tablet devices, ensure your screen is set to not auto-lock. When the screen locks, your device may suspend the connection, which can disconnect you from the game.</li>
+                            <li><strong>Timer Desync:</strong> If you background the app for a few seconds and come back, your timer will have paused and is no longer in sync with other players. However, as long as the host's timer remains correct (host doesn't background), the game will continue as normal since only the host enforces turn time limits.</li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+            
+            <!-- How to Play Dropdown -->
+            <div class="info-box" style="margin-top: 15px;">
+                <details class="info-dropdown">
+                    <summary style="cursor: pointer; font-size: 1.1em; font-weight: bold; color: var(--secondary-color); padding: 10px; user-select: none;">
+                        🎮 How to Play
+                    </summary>
+                    <div style="padding: 15px; padding-top: 10px; line-height: 1.6;">
+                        <p><strong>Players:</strong> 2-6 players required</p>
+                        
+                        <p style="margin-top: 15px;"><strong>Setup:</strong></p>
+                        <ol style="margin-left: 20px; margin-top: 5px;">
+                            <li>One player hosts the game and shares the 8-digit code</li>
+                            <li>Other players join using the code</li>
+                            <li>All players select their character</li>
+                            <li>Host starts the game when ready (2-6 players)</li>
+                        </ol>
+                        
+                        <p style="margin-top: 15px;"><strong>Your Turn:</strong></p>
+                        <ol style="margin-left: 20px; margin-top: 5px;">
+                            <li><strong>Select a Destination:</strong> Choose which room you want to travel to</li>
+                            <li><strong>Roll Dice:</strong> Keep rolling (two dice, 2-12 range) to accumulate moves until you reach your destination</li>
+                            <li><strong>Arrive at Room:</strong> Once you have enough moves, you'll arrive automatically</li>
+                            <li><strong>Make a Suggestion (Optional):</strong> Suggest a suspect, weapon, and the room you're in. Other players will try to disprove it</li>
+                            <li><strong>Make an Accusation (Optional):</strong> If you're confident, make a final accusation. Wrong = elimination!</li>
+                            <li><strong>End Turn:</strong> Pass to the next player</li>
+                        </ol>
+                        
+                        <p style="margin-top: 15px;"><strong>If Eliminated:</strong> You can no longer make moves, suggestions, or accusations. However, you can still show cards to disprove other players' suggestions.</p>
+                        
+                        <p style="margin-top: 15px;"><strong>Detective Notes:</strong> Click cards to mark them as eliminated (✗) or likely (⭐) to help track your investigation</p>
+                        
+                        <p style="margin-top: 15px;"><strong>Winning:</strong> Correctly accuse the right suspect, weapon, and room!</p>
+                    </div>
+                </details>
+            </div>
+            
+            <!-- Local Setup Dropdown -->
+            <div class="info-box" style="margin-top: 15px;">
+                <details class="info-dropdown">
+                    <summary style="cursor: pointer; font-size: 1.1em; font-weight: bold; color: var(--secondary-color); padding: 10px; user-select: none;">
+                        🏠 Local Game Night Setup
+                    </summary>
+                    <div style="padding: 15px; padding-top: 10px; line-height: 1.6;">
+                        <p>Host this on your local network (e.g., Raspberry Pi on your home WiFi). Only people connected to your WiFi can access and play the game. Player devices must be able to communicate with the host server (Raspberry Pi).</p>
+                        <p style="margin-top: 10px;">PeerJS is used for real-time communication between players, but requires internet to function. Game data is sent peer-to-peer through PeerJS servers.</p>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- Host Screen -->
+        <div id="host-screen" class="screen">
+            <h2>Host a Game</h2>
+            <div class="input-group">
+                <label>Select theme:</label>
+                <div id="host-theme-select" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
+            </div>
+            <div class="input-group">
+                <label>Objective:</label>
+                <p id="host-objective-display" style="font-size: 1em; color: var(--text-color); margin-top: 5px; line-height: 1.5;">-</p>
+            </div>
+            <div class="input-group">
+                <label>Select your character:</label>
+                <div id="host-character-select" class="character-grid"></div>
+            </div>
+            <div class="input-group">
+                <label for="turn-time-input">Turn time limit (seconds):</label>
+                <input type="number" id="turn-time-input" min="30" max="600" value="120" step="10" style="max-width: 150px;">
+                <p style="font-size: 0.85em; color: #ccc; margin-top: 5px;">Minimum 30 seconds, maximum 10 minutes (default: 120s / 2 minutes)</p>
+            </div>
+            <div class="code-display">
+                <p>Share this code with players:</p>
+                <div class="game-code" id="game-code">------</div>
+            </div>
+            <div class="players-waiting">
+                <h3>Players <span id="player-count">0</span>/6</h3>
+                <ul id="player-list"></ul>
+            </div>
+            <button id="start-game-btn" class="btn btn-primary" disabled>Start Game (Need 2+ players)</button>
+            <button id="cancel-host-btn" class="btn btn-secondary">Cancel</button>
+        </div>
+
+        <!-- Join Screen -->
+        <div id="join-screen" class="screen">
+            <div style="text-align: center; max-width: 500px; margin: 0 auto; padding: 60px 20px;">
+                <h2>Join a Game</h2>
+                <div class="input-group">
+                    <label for="game-code-input">Enter 8-digit game code:</label>
+                    <input type="text" id="game-code-input" maxlength="8" placeholder="00000000" pattern="[0-9]{8}" style="margin: 0 auto;">
+                </div>
+                <button id="join-game-btn" class="btn btn-primary">Join Game</button>
+                <button id="cancel-join-btn" class="btn btn-secondary" style="margin-top: 15px;">Back</button>
+                <div id="join-status" class="status-message"></div>
+            </div>
+        </div>
+
+        <!-- Player Lobby Screen -->
+        <div id="player-lobby-screen" class="screen">
+            <h2>Game Lobby</h2>
+            <div class="input-group">
+                <label>Currently Selected Theme:</label>
+                <p id="lobby-theme-display" style="font-size: 1.1em; color: var(--text-color); font-weight: bold; margin-top: 5px; margin-bottom: 15px;">-</p>
+                <label>Objective:</label>
+                <p id="lobby-objective-display" style="font-size: 1em; color: var(--text-color); margin-top: 5px; margin-bottom: 15px; line-height: 1.5;">-</p>
+                <label>Your character:</label>
+                <p id="player-character-display" style="font-size: 1.2em; color: var(--text-color); font-weight: bold; margin-top: 10px;">-</p>
+                <p style="font-size: 0.95em; color: var(--text-color); margin-top: 15px; margin-bottom: 5px;">All players must pick a character before the host can start the game.</p>
+                <div id="lobby-character-select" class="character-grid" style="margin-top: 15px;"></div>
+            </div>
+            <div class="players-waiting">
+                <h3>Players <span id="player-lobby-count">0</span>/6</h3>
+                <ul id="player-lobby-list"></ul>
+            </div>
+            <p style="color: var(--secondary-color); margin-top: 20px;">Waiting for host to start the game...</p>
+            <button id="leave-lobby-btn" class="btn btn-secondary">Leave Lobby</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <div>
+                    <h2>🔍 Cluedoe Investigation</h2>
+                </div>
+                <div>
+                    <button id="leave-game-btn" class="btn btn-small btn-danger">Leave Game</button>
+                </div>
+            </div>
+
+            <div class="game-content">
+                <!-- Your Cards -->
+                <div class="card-section">
+                    <h3>Your Cards (Keep Secret!)</h3>
+                    <div id="your-cards" class="card-grid"></div>
+                </div>
+
+                <!-- Top Info Section: Game Log and Messages -->
+                <div class="top-info-section">
+                    <!-- Game Log -->
+                    <div class="game-log-section">
+                        <h3>Game Log</h3>
+                        <div id="game-log" class="game-log"></div>
+                    </div>
+
+                    <!-- Messages Section -->
+                    <div class="info-messages-section">
+                        <div id="suggestion-result" class="result-box"></div>
+                        
+                        <!-- Waiting for disproof message -->
+                        <div id="waiting-disproof" class="disproof-section" style="display: none;">
+                            <h4 id="waiting-disproof-text" style="text-align: center; margin: 0;"></h4>
+                        </div>
+                        
+                        <!-- Disproof UI -->
+                        <div id="disproof-section" class="disproof-section" style="display: none;">
+                            <h4>A player made a suggestion you can disprove!</h4>
+                            <p id="disproof-suggestion-text"></p>
+                            <p>Select a card to show:</p>
+                            <div id="disproof-cards" class="card-grid"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Turn Info Section -->
+                <div class="game-header" style="margin-top: 10px; margin-bottom: 10px;">
+                    <div>
+                        <p id="player-character-name" style="margin: 0; font-size: 1.1em; color: var(--secondary-color); font-weight: bold;">Playing as: <span style="color: var(--text-color);">-</span></p>
+                    </div>
+                    <div class="game-info">
+                        <span id="current-player" style="font-size: 1.2em;">Your Turn</span>
+                        <span id="turn-timer" style="margin-left: 20px; font-size: 1.2em; color: var(--secondary-color); font-weight: bold;">⏱️ 2:00</span>
+                    </div>
+                </div>
+
+                <!-- Game Board -->
+                <div class="game-board">
+                    <div class="board-section">
+                        <h3>Your Turn Actions</h3>
+                        
+                        <!-- Movement Section -->
+                        <div class="movement-section">
+                            <h4>Movement</h4>
+                            <p id="movement-status">Select a room to travel to</p>
+                            <div class="accusation-form">
+                                <select id="room-move-select" class="game-select">
+                                    <option value="">Choose destination room...</option>
+                                </select>
+                                <button id="select-destination-btn" class="btn btn-secondary" style="margin: 10px 0;">Set Destination</button>
+                            </div>
+                            <div id="movement-progress" style="display: none; padding: 15px; margin: 10px 0; background: rgba(218, 165, 32, 0.2); border-radius: 5px;">
+                                <p><strong>Destination:</strong> <span id="destination-room">-</span></p>
+                                <p><strong>Moves Required:</strong> <span id="moves-required">0</span></p>
+                                <p><strong>Moves Accumulated:</strong> <span id="moves-accumulated">0</span></p>
+                                <p><strong>Remaining:</strong> <span id="moves-remaining">0</span></p>
+                                <button id="roll-dice-btn" class="btn btn-primary" style="margin-top: 10px;">🎲 Roll Dice</button>
+                                <div id="dice-result" style="display: none; margin-top: 10px;">
+                                    <p id="dice-number"></p>
+                                </div>
+                            </div>
+                            <p id="current-room-display" style="margin-top: 15px; padding: 12px; background: rgba(218, 165, 32, 0.3); border-radius: 5px; font-size: 1.1em; color: var(--secondary-color); font-weight: bold; text-align: center;">Currently in: <span style="color: var(--text-color);">Hallway</span></p>
+                        </div>
+                        
+                        <!-- Suggestion Section -->
+                        <div class="suggestion-section" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--border-color);">
+                            <h4>Make a Suggestion</h4>
+                            <p id="suggestion-status" style="color: var(--secondary-color); margin-bottom: 10px;">You must be in a room to make a suggestion</p>
+                            <div class="accusation-form">
+                                <select id="suspect-select" class="game-select">
+                                    <option value="">Select Suspect...</option>
+                                </select>
+                                <select id="weapon-select" class="game-select">
+                                    <option value="">Select Weapon...</option>
+                                </select>
+                                <select id="suggestion-room-select" class="game-select" style="display: none;">
+                                    <option value="">Select Room...</option>
+                                </select>
+                                <button id="suggest-btn" class="btn btn-primary" disabled>Make Suggestion</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Accusation Section -->
+                        <div class="accusation-section" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--border-color);">
+                            <h4>Make Final Accusation</h4>
+                            <p style="font-size: 0.9em; color: #ff6b6b; margin-bottom: 10px;">⚠️ Wrong accusation eliminates you! Must be in a room to accuse.</p>
+                            <div class="accusation-form">
+                                <select id="accuse-suspect-select" class="game-select">
+                                    <option value="">Select Suspect...</option>
+                                </select>
+                                <select id="accuse-weapon-select" class="game-select">
+                                    <option value="">Select Weapon...</option>
+                                </select>
+                                <p id="accusation-room-display" style="margin: 10px 0; padding: 12px; background: rgba(218, 165, 32, 0.3); border-radius: 5px; font-size: 1.1em; color: var(--secondary-color); font-weight: bold; text-align: center;">
+                                    Accusing in: <span id="current-accusation-room" style="color: var(--text-color);">Must be in a room</span>
+                                </p>
+                                <button id="accuse-btn" class="btn btn-danger">Final Accusation!</button>
+                                <button id="end-turn-btn" class="btn btn-secondary">End Turn</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detective Notes -->
+                    <div class="notes-section">
+                        <h3>Detective Notes</h3>
+                        <div id="detective-notes" class="notes-grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Winner Screen -->
+        <div id="winner-screen" class="screen">
+            <h1>🎉 Case Solved! 🎉</h1>
+            <div id="winner-info" class="winner-info"></div>
+            <div id="solution-reveal" class="solution-reveal"></div>
+            <button id="new-game-btn" class="btn btn-primary">New Game</button>
+        </div>
+    </div>
+    
+    <footer class="footer">
+        <div class="footer-content">
+            Made with ❤️ by <a href="https://github.com/amec0e" target="_blank" rel="noopener noreferrer">amec0e</a>
+        </div>
+    </footer>
+
+    <script src="game.js"></script>
+</body>
+</html>
