@@ -6,6 +6,8 @@ An old favourite and classic Cluedoe P2P game, with themes!
 
 Currently only two themes, Cluedoe Classic (with some extra fun playable detectives) and Strange Things.
 
+**NOTE:** This is intended for self hosting on a Pi or similar to play with friends and family over locally. Not intended to be hosted online. While this is local this will need internet connectivity for PeerJS
+
 **Setup:**
 ```
 sudo su
