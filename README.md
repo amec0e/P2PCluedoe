@@ -8,7 +8,9 @@ Currently only two themes, Cluedoe Classic (with some extra fun playable detecti
 
 **Setup:**
 ```
-sudo apt install lighttpd
+sudo su
+
+apt install lighttpd
 
 mkdir /var/www/html/cluedoe
 
