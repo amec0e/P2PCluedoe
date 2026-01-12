@@ -1,21 +1,21 @@
-const THEMES = {
-    cluedoeclassic: {
+const THEMES = Object.freeze({
+    cluedoeclassic: Object.freeze({
         name: 'Cluedoe Classic',
         objective: 'Someone has been murdered, everyone is a suspect, find out who did the crime.',
-        suspects: ['Col. Mustard', 'Miss Scarlet', 'Mrs. Peacock', 'Mrs. White', 'Prof. Plum', 'Rev. Green'],
-        weapons: ['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench'],
-        rooms: ['Ballroom', 'Billiard Room', 'Conservatory', 'Dining Room', 'Hall', 'Kitchen', 'Library', 'Lounge', 'Study'],
-        characters: ['Benoit Blanc', 'Col. Mustard', 'Dr. Orchid', 'Eddie Valiant', 'Frank Drebin', 'Miss Scarlet', 'Mrs. Peacock', 'Mrs. White', 'Prof. Plum', 'Rev. Green', 'Sherlock Holmes']
-    },
-    strangethings: {
+        suspects: Object.freeze(['Col. Mustard', 'Miss Scarlet', 'Mrs. Peacock', 'Mrs. White', 'Prof. Plum', 'Rev. Green']),
+        weapons: Object.freeze(['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench']),
+        rooms: Object.freeze(['Ballroom', 'Billiard Room', 'Conservatory', 'Dining Room', 'Hall', 'Kitchen', 'Library', 'Lounge', 'Study']),
+        characters: Object.freeze(['Benoit Blanc', 'Col. Mustard', 'Dr. Orchid', 'Eddie Valiant', 'Frank Drebin', 'Miss Scarlet', 'Mrs. Peacock', 'Mrs. White', 'Prof. Plum', 'Rev. Green', 'Sherlock Holmes'])
+    }),
+    strangethings: Object.freeze({
         name: 'Strange Things',
         objective: 'With all radio communications down, the team split up all over Hawkins and a defeated Demogorgon, you must figure out which one of the team defeated the Demogorgon. With what weapon and where in Hawkins.',
-        suspects: ['Dustin', 'Eleven', 'Lucas', 'Max', 'Mike', 'Will'],
-        weapons: ['Fireworks', 'Flame Thrower', '.357 Revolver', 'Shotgun', 'Nailed Baseball Bat', 'Wrist Rocket'],
-        rooms: ['Castle Byers', 'Forest Hill Trailer Park', 'Hawkins Community Pool', 'Hawkins Highschool', 'Hawkins Memorial Hospital', 'Hawkins National Lab', 'Palace Arcade', 'Star Court Mall', 'The Creel House'],
-        characters: ['Eddie Munson', 'Jim Hopper', 'Johnathan Byers', 'Murray Bauman', 'Nancy Wheeler', 'Robin Buckley', 'Steve Harrington']
-    }
-};
+        suspects: Object.freeze(['Dustin', 'Eleven', 'Lucas', 'Max', 'Mike', 'Will']),
+        weapons: Object.freeze(['Fireworks', 'Flame Thrower', '.357 Revolver', 'Shotgun', 'Nailed Baseball Bat', 'Wrist Rocket']),
+        rooms: Object.freeze(['Castle Byers', 'Forest Hill Trailer Park', 'Hawkins Community Pool', 'Hawkins Highschool', 'Hawkins Memorial Hospital', 'Hawkins National Lab', 'Palace Arcade', 'Star Court Mall', 'The Creel House']),
+        characters: Object.freeze(['Eddie Munson', 'Jim Hopper', 'Johnathan Byers', 'Murray Bauman', 'Nancy Wheeler', 'Robin Buckley', 'Steve Harrington'])
+    })
+});
 let activeTheme = 'cluedoeclassic';
 let SUSPECTS = THEMES[activeTheme].suspects;
 let WEAPONS = THEMES[activeTheme].weapons;
@@ -48,11 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeEventListeners();
     initializeNotes();
 });
-function sanitizeInput(input) {
-    const temp = document.createElement('div');
-    temp.textContent = input;
-    return temp.innerHTML.trim().substring(0, 20);
-}
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -245,18 +240,15 @@ function initializeHost() {
         debug: 2
     });
     peer.on('open', (id) => {
-        console.log('Host peer ID:', id);
         document.getElementById('game-code').textContent = gameState.gameCode;
         document.getElementById('player-count').textContent = '1';
         updatePlayerList();
         checkCanStartGame();
     });
     peer.on('connection', (conn) => {
-        console.log('Incoming connection from:', conn.peer);
         setupConnection(conn);
     });
     peer.on('error', (err) => {
-        console.error('PeerJS error:', err);
         alert('Connection error: ' + err.type);
     });
 }
@@ -281,11 +273,9 @@ function checkCanStartGame() {
 function setupConnection(conn) {
     const playerId = conn.peer;
     conn.on('open', () => {
-        console.log('Connection opened with:', playerId);
         connections[playerId] = conn;
     });
     conn.on('data', (data) => {
-        console.log('Received data:', data);
         if (data.type === 'join') {
             if (gameState.players.length >= 6) {
                 conn.send({
@@ -347,7 +337,6 @@ function setupConnection(conn) {
         }
     });
     conn.on('close', () => {
-        console.log('Connection closed with:', playerId);
         removePlayer(playerId);
     });
 }
@@ -391,11 +380,9 @@ async function joinGame() {
     showStatus('Connecting to game...', 'success');
     peer = new Peer();
     peer.on('open', (id) => {
-        console.log('My peer ID:', id);
         const hostId = 'cluedoe-' + gameState.gameCode;
         const conn = peer.connect(hostId);
         conn.on('open', () => {
-            console.log('Connected to host!');
             showStatus('Connected! Waiting for game to start...', 'success');
             conn.send({
                 type: 'join',
@@ -407,7 +394,6 @@ async function joinGame() {
             handleMessage(data);
         });
         conn.on('close', () => {
-            console.log('Disconnected from host');
             if (gameState.gameStarted) {
                 addLog('Host left the game. Game ended.');
                 alert('Host has left the game. The game will now end.');
@@ -420,12 +406,10 @@ async function joinGame() {
             }
         });
         conn.on('error', (err) => {
-            console.error('Connection error:', err);
             showStatus('Could not connect. Make sure the code is correct and the host has started the game.', 'error');
         });
     });
     peer.on('error', (err) => {
-        console.error('PeerJS error:', err);
         if (err.type === 'peer-unavailable') {
             showStatus('Game not found. Check the code and make sure the host has created the game.', 'error');
         } else {
@@ -459,7 +443,6 @@ function startGame() {
         weapon: WEAPONS[Math.floor(Math.random() * WEAPONS.length)],
         room: ROOMS[Math.floor(Math.random() * ROOMS.length)]
     };
-    console.log('Solution:', gameState.solution);
     const remainingCards = [
         ...SUSPECTS.filter(s => s !== gameState.solution.suspect),
         ...WEAPONS.filter(w => w !== gameState.solution.weapon),
@@ -593,9 +576,9 @@ function displayDetectiveNotes() {
             } else {
                 noteDiv.style.cursor = 'pointer';
             }
-            const status = gameState.notes[item] === 'owned' ? 'â' : 
-                          gameState.notes[item] === 'eliminated' ? 'â' : 
-                          gameState.notes[item] === 'likely' ? 'â­' : '?';
+            const status = gameState.notes[item] === 'owned' ? '✗' : 
+                          gameState.notes[item] === 'eliminated' ? '✗' : 
+                          gameState.notes[item] === 'likely' ? '⭐' : '?';
             noteDiv.innerHTML = `<span>${item}</span><span>${status}</span>`;
             if (gameState.notes[item] !== 'owned' && gameState.notes[item] !== 'eliminated') {
                 noteDiv.onclick = () => toggleNoteStatus(item);
@@ -692,7 +675,7 @@ function rollDice() {
     const roll = die1 + die2;
     gameState.movesAccumulated += roll;
     const remaining = gameState.movesRequired - gameState.movesAccumulated;
-    document.getElementById('dice-number').textContent = `ð² You rolled ${die1} + ${die2} = ${roll}!`;
+    document.getElementById('dice-number').textContent = `🎲 You rolled ${die1} + ${die2} = ${roll}!`;
     document.getElementById('dice-result').style.display = 'block';
     document.getElementById('moves-accumulated').textContent = gameState.movesAccumulated;
     document.getElementById('moves-remaining').textContent = Math.max(0, remaining);
@@ -724,7 +707,7 @@ function rollDice() {
 function arriveAtRoom() {
     gameState.myCurrentRoom = gameState.destinationRoom;
     gameState.isInRoom = true;
-    addLog(`â Arrived at ${gameState.myCurrentRoom}!`);
+    addLog(`✓ Arrived at ${gameState.myCurrentRoom}!`);
     gameState.destinationRoom = null;
     gameState.movesRequired = 0;
     gameState.movesAccumulated = 0;
@@ -1099,13 +1082,13 @@ function showWinner(winner, solution) {
         <h3>The Solution:</h3>
         <div class="solution-cards">
             <div class="solution-card">
-                <strong>Suspect:</strong><br>${solution.suspect}
+                <strong>Suspect:</strong><br>${escapeHtml(solution.suspect)}
             </div>
             <div class="solution-card">
-                <strong>Weapon:</strong><br>${solution.weapon}
+                <strong>Weapon:</strong><br>${escapeHtml(solution.weapon)}
             </div>
             <div class="solution-card">
-                <strong>Room:</strong><br>${solution.room}
+                <strong>Room:</strong><br>${escapeHtml(solution.room)}
             </div>
         </div>
         ${eliminatedSection}
@@ -1160,7 +1143,7 @@ function updateTimerDisplay() {
     const seconds = gameState.turnTimeRemaining % 60;
     const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     const timerEl = document.getElementById('turn-timer');
-    timerEl.textContent = `â±ï¸ ${timeString}`;
+    timerEl.textContent = `⏱️ ${timeString}`;
     if (gameState.turnTimeRemaining <= 20) {
         timerEl.style.color = '#ff6b6b';
     } else if (gameState.turnTimeRemaining <= 60) {
@@ -1195,10 +1178,10 @@ function getCardColor(card) {
 }
 function colorCard(card) {
     const color = getCardColor(card);
-    return `<span style="color: ${color}; font-weight: bold;">${card}</span>`;
+    return `<span style="color: ${color}; font-weight: bold;">${escapeHtml(card)}</span>`;
 }
 function colorPlayer(playerName) {
-    return `<span style="color: var(--secondary-color); font-weight: bold;">${playerName}</span>`;
+    return `<span style="color: var(--secondary-color); font-weight: bold;">${escapeHtml(playerName)}</span>`;
 }
 function addLog(message) {
     const log = document.getElementById('game-log');
